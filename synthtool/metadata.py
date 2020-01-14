@@ -25,6 +25,7 @@ from typing import List, Iterable, Dict
 
 import google.protobuf.json_format
 
+from synthtool import git
 from synthtool import log
 from synthtool.protos import metadata_pb2
 
@@ -264,3 +265,19 @@ def _clear_local_paths(metadata):
         if source.HasField("git"):
             git_source = source.git
             git_source.ClearField("local_path")
+
+
+def _add_current_git_source():
+    """Adds the git repo in the current directory as a git source."""
+    sha, message = git.get_latest_commit(os.getcwd())
+    commit_metadata = git.extract_commit_message_metadata(message)
+    cwd = pathlib.Path(os.getcwd())
+    remotes = git.get_remotes()
+    remote_url = remotes[0].url if remotes else None    
+    add_git_source(
+        name=cwd.name,
+        remote=remote_url,
+        sha=sha,
+        local_path=cwd,
+        url=url,
+    )

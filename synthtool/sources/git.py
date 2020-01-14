@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import os
 import pathlib
 import re
 import shutil
 import subprocess
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 
 from synthtool import _tracked_paths
 from synthtool import cache
@@ -113,8 +114,9 @@ def parse_repo_url(url: str) -> Dict[str, str]:
 def get_latest_commit(repo: pathlib.Path = None) -> Tuple[str, str]:
     """Return the sha and commit message of the latest commit."""
     output = subprocess.check_output(
-        ["git", "log", "-1", "--pretty=%H%n%B"], cwd=repo
-    ).decode("utf-8")
+        ["git", "log", "-1", "--pretty=%H%n%B", "--no-decorate"], 
+        cwd=repo, universal_newlines=True
+    )
     commit, message = output.split("\n", 1)
     return commit, message
 
@@ -142,3 +144,16 @@ def extract_commit_message_metadata(message: str) -> Dict[str, str]:
         metadata[key] = value.strip()
 
     return metadata
+
+
+Remote = collections.namedtuple('Remote', ['name', 'url'])
+
+
+def get_remotes(repo: pathlib.Path = None) -> List[Remote]:
+    """Return the sha and commit message of the latest commit."""
+    output = subprocess.check_output(
+        ["git", "remote", "-v"], 
+        cwd=repo, universal_newlines=True
+    )
+    stripped_lines = [line.strip() for line in output.splitlines()]
+    return [Remote(line.split(maxsplit=1)) for line in stripped_lines]
