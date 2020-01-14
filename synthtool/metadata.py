@@ -25,7 +25,6 @@ from typing import List, Iterable, Dict
 
 import google.protobuf.json_format
 
-from synthtool import git
 from synthtool import log
 from synthtool.protos import metadata_pb2
 
@@ -203,6 +202,11 @@ class MetadataTrackerAndWriter:
             _add_new_files(tracked_new_files)
             _remove_obsolete_files(self.old_metadata)
         _append_git_logs(self.old_metadata, get())
+        try:
+            cwd = os.getcwd()
+            _add_current_git_source()
+        except subprocess.CalledProcessError as error:
+            log.warning(f"Is {cwd} a git repo?", exc_info=1)
         _clear_local_paths(get())
         write(self.metadata_file_path)
 
@@ -279,5 +283,4 @@ def _add_current_git_source():
         remote=remote_url,
         sha=sha,
         local_path=cwd,
-        url=url,
     )
