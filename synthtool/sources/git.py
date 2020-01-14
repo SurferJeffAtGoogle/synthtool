@@ -80,7 +80,6 @@ def clone(
         sha=sha,
         internal_ref=commit_metadata.get("PiperOrigin-RevId"),
         local_path=str(dest),
-        url=url,
     )
 
     return dest
