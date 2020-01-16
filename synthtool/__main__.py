@@ -22,6 +22,7 @@ import pkg_resources
 
 import synthtool.log
 import synthtool.metadata
+import synthtool.metadata_tracker
 
 
 try:
@@ -87,7 +88,7 @@ def main(synthfile: str, metadata: str, extra_args: Sequence[str]):
         if spec.loader is None:
             raise ImportError("Could not import synth.py")
 
-        with synthtool.metadata.MetadataTrackerAndWriter(metadata):
+        with synthtool.metadata_tracker.MetadataTrackerAndWriter(metadata):
             spec.loader.exec_module(synth_module)  # type: ignore
 
     else:
