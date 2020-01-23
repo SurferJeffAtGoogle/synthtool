@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import datetime
+import inspect
 import locale
 import os
 import pathlib
@@ -25,6 +26,7 @@ from typing import List, Iterable, Dict
 
 import google.protobuf.json_format
 
+import synthtool
 from synthtool import log
 from synthtool.protos import metadata_pb2
 
@@ -206,6 +208,7 @@ class MetadataTrackerAndWriter:
         self.start_time = time.time() - 1
         self.old_metadata = _read_or_empty(self.metadata_file_path)
         _add_self_git_source()
+        _add_synthtool_git_source()
 
     def __exit__(self, exception_type, exception_value, traceback):
         if should_track_obsolete_files() and not exception_value:
@@ -287,25 +290,49 @@ def _add_self_git_source():
     Returns:
         The number of git sources added to metadata.
     """
+    return _add_git_source_from_directory(".", os.getcwd())
+
+
+def _add_git_source_from_directory(name: str, dir_path: str):
+    """Adds the git repo containing the directory as a git source.
+
+    Returns:
+        The number of git sources added to metadata.
+    """
     git = shutil.which("git")
-    cwd = os.getcwd()
-    completed_process = subprocess.run([git, "status"])
+    if not git:
+        raise FileNotFoundError("Could not find git in PATH.")
+    completed_process = subprocess.run(
+        [git, "-C", dir_path, "status"], universal_newlines=True
+    )
     if completed_process.returncode:
-        log.warning("%s is not directory in a git repo.", cwd)
+        log.warning("%s is not directory in a git repo.", dir_path)
         return 0
     completed_process = subprocess.run(
-        [git, "remote", "get-url", "origin"],
+        [git, "-C", dir_path, "remote", "get-url", "origin"],
         stdout=subprocess.PIPE,
         universal_newlines=True,
     )
     url = completed_process.stdout.strip()
     completed_process = subprocess.run(
-        [git, "log", "--no-decorate", "-1", "--pretty=format:%H"],
+        [git, "-C", dir_path, "log", "--no-decorate", "-1", "--pretty=format:%H"],
         stdout=subprocess.PIPE,
         universal_newlines=True,
     )
     sha = completed_process.stdout.strip()
-    add_git_source(name=".", remote=url, sha=sha, local_path=cwd)
+    add_git_source(name=name, remote=url, sha=sha, local_path=dir_path)
+    return 1
+
+
+def _add_synthtool_git_source():
+    """Adds synthtool's repo as a git source.
+
+    Returns:
+        The number of git sources added to metadata.
+    """
+    source_path = inspect.getfile(synthtool)
+    source_dir = pathlib.Path(source_path).parent
+    return _add_git_source_from_directory("synthtool", str(source_dir))
 
 
 def _combine_commit_logs():
