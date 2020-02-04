@@ -21,13 +21,15 @@ import "google/protobuf/timestamp.proto";
 
 message Metadata {
     google.protobuf.Timestamp update_time = 1;
-
-    repeated Source sources = 2;
+    // Use source_list instead of sources.
+    repeated Source sources = 2 [deprecated=true];
     repeated Destination destinations = 3;
     // New files written during the generation process.
     // Includes existing files that were freshly overwritten with the identical
     // content.
     repeated NewFile new_files = 4;
+    
+    SourceList source_list = 5;
 }
 
 message Source {
@@ -36,6 +38,12 @@ message Source {
         GeneratorSource generator = 2;
         TemplateSource template = 3;
     }
+}
+
+message SourceList {
+    GitSource git = 1;
+    GeneratorSource generator = 2;
+    TemplateSource template = 3;
 }
 
 message GitSource {
