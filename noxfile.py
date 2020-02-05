@@ -16,7 +16,7 @@ import nox
 
 @nox.session(python='3.6')
 def generate_protos(session):
-    session.install("grpcio-tools")
+    session.install("grpcio-tools==1.26.0")
     session.run(
         "python", "-m", "grpc_tools.protoc", "-Isynthtool/protos", "--python_out=synthtool/protos", "synthtool/protos/metadata.proto")
 
