@@ -41,9 +41,9 @@ message Source {
 }
 
 message SourceList {
-    GitSource git = 1;
-    GeneratorSource generator = 2;
-    TemplateSource template = 3;
+    repeated GitSource git_sources = 1;
+    repeated GeneratorSource generator_sources = 2;
+    repeated TemplateSource template_sources = 3;
 }
 
 message GitSource {
