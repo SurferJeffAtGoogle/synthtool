@@ -6,5 +6,5 @@ py_test(
     ]),
     data = glob(["fixtures/**"]),
     main = "main.py",
-    deps = ["//synthtool"],
+    deps = ["//synthtool:synthtool"],
 )
