@@ -70,6 +70,7 @@ def main(synthfile: str, metadata: str, extra_args: Sequence[str]):
     Optional environment variables:
       SYNTHTOOL_ARTMAN_VERSION:  The version of artman to use.
       SYNTHTOOL_GOOGLEAPIS:      Path to local clone of https://github.com/googleapis/googleapis
+      SYNTHTOOL_GOOGLEAPIS_PRIVATE:      Path to local clone of https://github.com/googleapis/googleapis-private
       SYNTHTOOL_GENERATOR:       Path to local gapic-generator directory to use for generation.
                 By default, the latest version of gapic-generator will be used.
       AUTOSYNTH_USE_SSH:         Access github repos via ssh instead of https.
