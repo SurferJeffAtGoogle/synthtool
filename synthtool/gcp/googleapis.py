@@ -23,9 +23,8 @@ import synthtool.metadata
 from synthtool import log
 from synthtool.sources import git
 
-GOOGLEAPIS_URL: str = git.make_repo_clone_url("googleapis/googleapis")
-GOOGLEAPIS_PRIVATE_URL: str = git.make_repo_clone_url("googleapis/googleapis-private")
-LOCAL_GOOGLEAPIS: Optional[str] = os.environ.get("SYNTHTOOL_GOOGLEAPIS")
+GOOGLEAPIS_URL_PATH = "googleapis/googleapis"
+GOOGLEAPIS_PRIVATE_URL_PATH = "googleapis/googleapis-private"
 
 
 @functools.lru_cache(maxsize=None)  # Execute once and cache the result.
@@ -37,18 +36,19 @@ def clone_googleapis(private: bool) -> Path:
     """
     if private:
         name = "googleapis-private"
-        url = GOOGLEAPIS_PRIVATE_URL
+        url_path = GOOGLEAPIS_PRIVATE_URL_PATH
     else:
         name = "googleapis"
-        url = GOOGLEAPIS_URL
+        url_path = GOOGLEAPIS_URL_PATH
 
-    if LOCAL_GOOGLEAPIS:
-        googleapis_path = Path(LOCAL_GOOGLEAPIS).expanduser()
+    local_googleapis = os.environ.get("SYNTHTOOL_GOOGLEAPIS")
+    if local_googleapis:
+        googleapis_path = Path(local_googleapis).expanduser()
         log.debug(f"Using local {name} at {googleapis_path}")
         synthtool.metadata.add_git_source_from_directory(name, str(googleapis_path))
 
     else:
         log.debug(f"Cloning {name}.")
-        googleapis_path = git.clone(url)
+        googleapis_path = git.clone(git.make_repo_clone_url(url_path))
 
     return googleapis_path
