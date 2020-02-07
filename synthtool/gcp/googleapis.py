@@ -17,7 +17,6 @@
 import functools
 import os
 from pathlib import Path
-from typing import Optional
 
 import synthtool.metadata
 from synthtool import log

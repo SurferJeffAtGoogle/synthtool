@@ -13,20 +13,14 @@
 # limitations under the License.
 
 import copy
-import json
 import os
 import importlib
-import pathlib
-import pytest
-import re
-import shutil
 import subprocess
 import unittest
 import unittest.mock
 
 import synthtool
 from synthtool import metadata
-from synthtool.tmp import tmpdir
 from synthtool.gcp.googleapis import clone_googleapis
 
 
@@ -55,7 +49,7 @@ class TestCase(unittest.TestCase):
             assert path == clone_googleapis(False)
             assert 1 == len(metadata.get().sources)
         except subprocess.CalledProcessError:
-            pass # The test may not have credentials to clone the private repo.
+            pass  # The test may not have credentials to clone the private repo.
 
     def test_clone_googleapis_with_environment_variable(self):
         path = clone_googleapis(False)
