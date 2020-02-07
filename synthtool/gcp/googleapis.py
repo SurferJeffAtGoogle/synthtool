@@ -37,11 +37,12 @@ def clone_googleapis(private: bool) -> Path:
     if private:
         name = "googleapis-private"
         url_path = GOOGLEAPIS_PRIVATE_URL_PATH
+        local_googleapis = os.environ.get("SYNTHTOOL_GOOGLEAPIS_PRIVATE")
     else:
         name = "googleapis"
         url_path = GOOGLEAPIS_URL_PATH
+        local_googleapis = os.environ.get("SYNTHTOOL_GOOGLEAPIS")
 
-    local_googleapis = os.environ.get("SYNTHTOOL_GOOGLEAPIS")
     if local_googleapis:
         googleapis_path = Path(local_googleapis).expanduser()
         log.debug(f"Using local {name} at {googleapis_path}")

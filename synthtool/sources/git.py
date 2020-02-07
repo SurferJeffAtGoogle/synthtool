@@ -59,7 +59,7 @@ def clone(
         shutil.rmtree(dest)
 
     if not dest.exists():
-        cmd = ["git", "clone", "--single-branch", url, dest]
+        cmd = ["git", "clone", "--single-branch", url, str(dest)]
         shell.run(cmd)
     else:
         shell.run(["git", "pull"], cwd=str(dest))
