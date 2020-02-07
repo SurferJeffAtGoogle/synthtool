@@ -251,10 +251,10 @@ def _add_self_git_source():
         The number of git sources added to metadata.
     """
     # Use the repository's root directory name as the name.
-    return _add_git_source_from_directory(".", os.getcwd())
+    return add_git_source_from_directory(".", os.getcwd())
 
 
-def _add_git_source_from_directory(name: str, dir_path: str):
+def add_git_source_from_directory(name: str, dir_path: str):
     """Adds the git repo containing the directory as a git source.
 
     Returns:
@@ -290,4 +290,4 @@ def _add_synthtool_git_source():
     """
     source_path = inspect.getfile(synthtool)
     source_dir = pathlib.Path(source_path).parent
-    return _add_git_source_from_directory("synthtool", str(source_dir))
+    return add_git_source_from_directory("synthtool", str(source_dir))

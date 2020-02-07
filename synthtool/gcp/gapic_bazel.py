@@ -22,6 +22,7 @@ from synthtool import log
 from synthtool import metadata
 from synthtool import shell
 from synthtool.sources import git
+from synthtool.gcp.googleapis import clone_googleapis
 
 GOOGLEAPIS_URL: str = git.make_repo_clone_url("googleapis/googleapis")
 GOOGLEAPIS_PRIVATE_URL: str = git.make_repo_clone_url("googleapis/googleapis-private")
@@ -69,11 +70,7 @@ class GAPICBazel:
         output_dir: Union[str, Path] = None,
         bazel_target: str = None,
     ):
-        # Determine which googleapis repo to use
-        if not private:
-            googleapis = self._clone_googleapis()
-        else:
-            googleapis = self._clone_googleapis_private()
+        googleapis = clone_googleapis(private)
 
         # Sanity check: We should have a googleapis repo; if we do not,
         # something went wrong, and we should abort.
@@ -189,36 +186,6 @@ class GAPICBazel:
 
         _tracked_paths.add(output_dir)
         return output_dir
-
-    def _clone_googleapis(self):
-        if self._googleapis is not None:
-            return self._googleapis
-
-        if LOCAL_GOOGLEAPIS:
-            self._googleapis = Path(LOCAL_GOOGLEAPIS).expanduser()
-            log.debug(f"Using local googleapis at {self._googleapis}")
-
-        else:
-            log.debug("Cloning googleapis.")
-            self._googleapis = git.clone(GOOGLEAPIS_URL)
-
-        return self._googleapis
-
-    def _clone_googleapis_private(self):
-        if self._googleapis_private is not None:
-            return self._googleapis_private
-
-        if LOCAL_GOOGLEAPIS:
-            self._googleapis_private = Path(LOCAL_GOOGLEAPIS).expanduser()
-            log.debug(
-                f"Using local googleapis at {self._googleapis_private} for googleapis-private"
-            )
-
-        else:
-            log.debug("Cloning googleapis-private.")
-            self._googleapis_private = git.clone(GOOGLEAPIS_PRIVATE_URL)
-
-        return self._googleapis_private
 
     def _ensure_dependencies_installed(self):
         log.debug("Ensuring dependencies.")

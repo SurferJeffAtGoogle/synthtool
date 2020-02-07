@@ -14,7 +14,7 @@
 
 import getpass
 from pathlib import Path
-from typing import List, Mapping, Optional, Union
+from typing import List, Mapping, Union
 import os
 import platform
 import tempfile
@@ -23,11 +23,7 @@ from synthtool import _tracked_paths
 from synthtool import log
 from synthtool import metadata
 from synthtool import shell
-from synthtool.sources import git
-
-GOOGLEAPIS_URL: str = git.make_repo_clone_url("googleapis/googleapis")
-GOOGLEAPIS_PRIVATE_URL: str = git.make_repo_clone_url("googleapis/googleapis-private")
-LOCAL_GOOGLEAPIS: Optional[str] = os.environ.get("SYNTHTOOL_GOOGLEAPIS")
+from synthtool.gcp.googleapis import clone_googleapis
 
 
 class GAPICMicrogenerator:
@@ -80,11 +76,7 @@ class GAPICMicrogenerator:
         generator_version: str = "latest",
         generator_args: Mapping[str, str] = None,
     ):
-        # Determine which googleapis repo to use
-        if not private:
-            googleapis = self._clone_googleapis()
-        else:
-            googleapis = self._clone_googleapis_private()
+        googleapis = clone_googleapis(private)
 
         # Sanity check: We should have a googleapis repo; if we do not,
         # something went wrong, and we should abort.
@@ -208,36 +200,6 @@ class GAPICMicrogenerator:
 
         _tracked_paths.add(output_dir)
         return output_dir
-
-    def _clone_googleapis(self):
-        if self._googleapis is not None:
-            return self._googleapis
-
-        if LOCAL_GOOGLEAPIS:
-            self._googleapis = Path(LOCAL_GOOGLEAPIS).expanduser()
-            log.debug(f"Using local googleapis at {self._googleapis}")
-
-        else:
-            log.debug("Cloning googleapis.")
-            self._googleapis = git.clone(GOOGLEAPIS_URL)
-
-        return self._googleapis
-
-    def _clone_googleapis_private(self):
-        if self._googleapis_private is not None:
-            return self._googleapis_private
-
-        if LOCAL_GOOGLEAPIS:
-            self._googleapis_private = Path(LOCAL_GOOGLEAPIS).expanduser()
-            log.debug(
-                f"Using local googleapis at {self._googleapis_private} for googleapis-private"
-            )
-
-        else:
-            log.debug("Cloning googleapis-private.")
-            self._googleapis_private = git.clone(GOOGLEAPIS_PRIVATE_URL)
-
-        return self._googleapis_private
 
     def _ensure_dependencies_installed(self):
         log.debug("Ensuring dependencies.")
