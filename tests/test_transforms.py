@@ -151,6 +151,29 @@ def test__move_to_dest(expand_path_fixtures):
     ]
 
 
+def test__move_to_dest_excludes_dir(expand_path_fixtures):
+    tmp_path = Path(str(expand_path_fixtures))
+    _tracked_paths.add(expand_path_fixtures)
+    dest = Path(str(expand_path_fixtures / "dest"))
+
+    transforms.move(tmp_path, dest, excludes=[normpath("dira/")])
+
+    files = sorted([str(x) for x in transforms._expand_paths("**/*", root="dest")])
+
+    # Assert destination does not contain dira/ (excluded)
+    assert files == [
+        normpath(path)
+        for path in [
+            "dest/a.txt",
+            "dest/b.py",
+            "dest/c.md",
+            "dest/dirb",
+            "dest/dirb/suba",
+            "dest/dirb/suba/g.py",
+        ]
+    ]
+
+
 def test__move_to_dest_subdir(expand_path_fixtures):
     tmp_path = Path(str(expand_path_fixtures))
     _tracked_paths.add(expand_path_fixtures)
