@@ -273,7 +273,7 @@ class SynthesizeLoopToolbox:
 
     def count_commits_with_context(self) -> int:
         """Returns the number of commits that could be traced to a source version."""
-        return self.commit_count - 1 if self.versions[0].merged else self.commit_count
+        return 0 if self.source_name == "self" else self.commit_count
 
     def push_changes(self, change_pusher: AbstractChangePusher) -> None:
         """Composes a PR title and pushes changes to github."""
