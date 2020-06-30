@@ -160,9 +160,9 @@ class SynthesizeLoopToolbox:
     def compile_version_groups(self):
         self.version_groups = [
             # Only use the most recent version of self.
-            [group[-1]] if "self" == group[-1].get_source_name()
-            else group
-            for group in self.source_versions]
+            [group[-1]] if "self" == group[-1].get_source_name() else group
+            for group in self.source_versions
+        ]
         self.versions = flatten_and_sort_source_versions(self.version_groups)
         self.apply_table = generate_apply_table(self.versions)
 
@@ -217,8 +217,12 @@ class SynthesizeLoopToolbox:
         forks = []
         for i, _group in enumerate(self.source_versions):
             new_groups = [[g[0]] for g in self.source_versions]
-            new_groups[i] = self.source_versions[i]
             source_name = self.source_versions[i][0].get_source_name()
+            new_groups[i] = (
+                [self.source_versions[i][-1]]
+                if "self" == source_name
+                else self.source_versions[i]
+            )
             fork_branch = f"{self.branch}-{source_name}"
             fork = SynthesizeLoopToolbox(
                 new_groups,
