@@ -147,7 +147,9 @@ class SynthesizeLoopToolbox:
         self._synth_path = synth_path or ""
 
         self.branch = branch
-        self.source_versions = source_versions
+        self.version_groups = [list(group) for group in source_versions]
+        self.versions = flatten_and_sort_source_versions(source_versions)
+        self.apply_table = generate_apply_table(self.versions)
         self.commit_count = 0
         # Set the environment variable to point to the preconfig.json file.
         self.environ = dict(os.environ)
@@ -160,8 +162,8 @@ class SynthesizeLoopToolbox:
     def compile_version_groups(self):
         # For a single pull request for all sources, we want to use the
         # most recent version of self.
-        self.version_groups = [list(self.source_versions[0])[-1]] + [
-            list(group) for group in self.source_versions[0:]]
+        return
+        self.version_groups = [list(group) for group in self.source_versions]
         self.versions = flatten_and_sort_source_versions(self.version_groups)
         self.apply_table = generate_apply_table(self.versions)
 
@@ -342,7 +344,7 @@ def synthesize_loop(
     Returns:
         int -- Number of commits committed to this repo.
     """
-    if not toolbox.versions:
+    if not toolbox.version_groups:
         return 0  # No versions, nothing to synthesize.
 
     try:
