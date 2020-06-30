@@ -158,7 +158,11 @@ class SynthesizeLoopToolbox:
         )
 
     def compile_version_groups(self):
-        self.version_groups = self.source_versions
+        self.version_groups = [
+            # Only use the most recent version of self.
+            [group[-1]] if "self" == group[-1].get_source_name()
+            else group
+            for group in self.source_versions]
         self.versions = flatten_and_sort_source_versions(self.version_groups)
         self.apply_table = generate_apply_table(self.versions)
 
