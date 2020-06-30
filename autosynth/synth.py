@@ -147,9 +147,7 @@ class SynthesizeLoopToolbox:
         self._synth_path = synth_path or ""
 
         self.branch = branch
-        self.version_groups = [list(group) for group in source_versions]
-        self.versions = flatten_and_sort_source_versions(source_versions)
-        self.apply_table = generate_apply_table(self.versions)
+        self.source_versions = [list(group) for group in source_versions]
         self.commit_count = 0
         # Set the environment variable to point to the preconfig.json file.
         self.environ = dict(os.environ)
@@ -160,13 +158,9 @@ class SynthesizeLoopToolbox:
         )
 
     def compile_version_groups(self):
-        # For a single pull request for all sources, we want to use the
-        # most recent version of self.
-        return
-        self.version_groups = [list(group) for group in self.source_versions]
+        self.version_groups = self.source_versions
         self.versions = flatten_and_sort_source_versions(self.version_groups)
         self.apply_table = generate_apply_table(self.versions)
-
 
     def apply_version(self, version_index: int) -> None:
         """Applies one version from each group."""
@@ -217,10 +211,10 @@ class SynthesizeLoopToolbox:
             [typing.List[SynthesizeLoopToolbox]] -- A toolbox for each source.
         """
         forks = []
-        for i, _group in enumerate(self.version_groups):
-            new_groups = [[g[0]] for g in self.version_groups]
-            new_groups[i] = self.version_groups[i]
-            source_name = self.version_groups[i][0].get_source_name()
+        for i, _group in enumerate(self.source_versions):
+            new_groups = [[g[0]] for g in self.source_versions]
+            new_groups[i] = self.source_versions[i]
+            source_name = self.source_versions[i][0].get_source_name()
             fork_branch = f"{self.branch}-{source_name}"
             fork = SynthesizeLoopToolbox(
                 new_groups,
@@ -344,7 +338,7 @@ def synthesize_loop(
     Returns:
         int -- Number of commits committed to this repo.
     """
-    if not toolbox.version_groups:
+    if not toolbox.source_versions:
         return 0  # No versions, nothing to synthesize.
 
     try:
