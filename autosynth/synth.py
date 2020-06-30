@@ -603,12 +603,10 @@ def _inner_main(temp_dir: str) -> int:
 
             # Enumerate the versions to loop over.
             sources = metadata.get("sources", [])
-            source_versions = [
-                git_source.enumerate_versions_for_working_repo(metadata_path, sources)
-            ]
+
             # Add supported source version types below:
-            source_versions.extend(
-                git_source.enumerate_versions(sources, pathlib.Path(temp_dir))
+            source_versions = git_source.enumerate_versions(
+                sources, pathlib.Path(temp_dir), working_repo_path
             )
 
             # Prepare to call synthesize loop.

@@ -22,6 +22,7 @@ import synthtool.sources.git as synthtool_git
 
 import autosynth.abstract_source
 from autosynth import git, executor
+from autosynth.log import logger
 
 
 def _strip_pr_number(commit_subject: str) -> str:
@@ -146,7 +147,7 @@ def _compose_comment(remote: str, sha: str, git_log: str) -> str:
 
 
 def enumerate_versions_for_source(
-    source: typing.Dict, temp_dir: pathlib.Path,
+    source: typing.Dict, temp_dir: pathlib.Path, working_repo_dir: pathlib.Path
 ) -> typing.List[autosynth.abstract_source.AbstractSourceVersion]:
     """Enumerates every commit after the most recent commit for provided git source.
 
@@ -156,13 +157,15 @@ def enumerate_versions_for_source(
     Returns:
         typing.List[autosynth.abstract_source.AbstractSourceVersion] -- List of versions
     """
-    name = source["name"]
-    if name == ".":
-        # Special case handled by enumerate_versions_for_generated_repo().
-        return []
     remote = source["remote"]
     tail_sha = source["sha"]
-    local_repo_dir = str(synthtool_git.clone(remote))
+    name = source["name"]
+    if name == ".":
+        # Special case for the working repo dir.
+        name = "self"
+        local_repo_dir = str(working_repo_dir)
+    else:
+        local_repo_dir = str(synthtool_git.clone(remote))
     # Get the list of commit hashes since the last library generation.
     shas = git.get_commit_shas_since(tail_sha, local_repo_dir)
     desc = f"Git repo {remote}"
@@ -171,7 +174,9 @@ def enumerate_versions_for_source(
 
 
 def enumerate_versions(
-    sources: typing.List[typing.Dict[str, typing.Dict]], temp_dir: pathlib.Path,
+    sources: typing.List[typing.Dict[str, typing.Dict]],
+    temp_dir: pathlib.Path,
+    working_repo_dir: pathlib.Path,
 ) -> typing.List[typing.List[autosynth.abstract_source.AbstractSourceVersion]]:
     """Enumerates every commit after the most recent commit for applicable git sources.
 
@@ -189,55 +194,21 @@ def enumerate_versions(
     git_sources = [source["git"] for source in sources if "git" in source]
 
     # deduplicate sources by name and remote
-    cache = set()
+    cache = {}
     versions = []
     for git_source in git_sources:
-        key = (git_source.get("name"), git_source.get("remote"))
-        if key in cache:
+        name = git_source.get("name")
+        if name in cache:
             continue
 
-        cache.add(key)
-        source_versions = enumerate_versions_for_source(git_source, temp_dir)
-        if source_versions:
-            versions.append(source_versions)
+        cache[name] = git_source.get("remote")
+        try:
+            source_versions = enumerate_versions_for_source(
+                git_source, temp_dir, working_repo_dir
+            )
+            if source_versions:
+                versions.append(source_versions)
+        except subprocess.SubprocessError as e:
+            logger.error("Exception while enumerating versions of %s\n%s", name, e)
 
     return versions
-
-
-def enumerate_versions_for_working_repo(
-    metadata_path: str, sources: typing.List[typing.Dict[str, typing.Dict]]
-) -> typing.List[autosynth.abstract_source.AbstractSourceVersion]:
-    """Enumerates every commit after the most recent commit to metadata_path.
-
-    Special case for enumerating the change history of the repo that
-    we're actually generating.
-
-    Arguments:
-        metadata_path {str} -- Metadata file path.
-
-    Returns:
-        typing.List[autosynth.abstract_source.AbstractSourceVersion] -- versions
-    """
-    # Get the repo root directory that contains metadata_path.
-    local_repo_dir = git.get_repo_root_dir(metadata_path)
-    # Find the most recent commit hash.
-    head_sha = executor.run(
-        ["git", "log", "-1", "--pretty=%H"],
-        stdout=subprocess.PIPE,
-        universal_newlines=True,
-        cwd=local_repo_dir,
-        check=True,
-    ).stdout.strip()
-    # Get the remote url.
-    remote = executor.run(
-        ["git", "remote", "get-url", "origin"],
-        stdout=subprocess.PIPE,
-        universal_newlines=True,
-        cwd=local_repo_dir,
-        check=True,
-    ).stdout.strip()
-    desc = f"This git repo ({remote})"
-    version = GitSourceVersion(local_repo_dir, head_sha, remote, desc, "self")
-    # The change from this repository must always be built first.
-    version.timestamp = datetime.datetime.fromtimestamp(0)
-    return [version]
