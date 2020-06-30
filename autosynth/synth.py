@@ -125,17 +125,12 @@ def generate_apply_table(versions: typing.List[FlatVersion]) -> Sequence[Sequenc
     return [list(d.values()) for d in table]
 
 
-class VersionZero:
-    """Info recorded to implement optimization of only synthing version zero once
-    across multiple sources."""
-
-    def __init__(self):
-        self.branch_name: str = ""
-        self.has_changes: bool = False
-
-
 class SynthesizeLoopToolbox:
-    """A convenient collection of state and functions called by synthesize_loop."""
+    """A convenient collection of state and functions called by synthesize_loop.
+    
+    The version history for self (a.k.a. this repo) must be passed as the 
+    first element in the list source_versions.
+    """
 
     def __init__(
         self,
@@ -152,18 +147,24 @@ class SynthesizeLoopToolbox:
         self._synth_path = synth_path or ""
 
         self.branch = branch
-        self.version_groups = [list(group) for group in source_versions]
-        self.versions = flatten_and_sort_source_versions(source_versions)
-        self.apply_table = generate_apply_table(self.versions)
+        self.source_versions = source_versions
         self.commit_count = 0
         # Set the environment variable to point to the preconfig.json file.
         self.environ = dict(os.environ)
         self.environ["SYNTHTOOL_PRECONFIG_FILE"] = self._preconfig_path
         self.source_name = ""  # Only non-empty for forks
-        self.version_zero = VersionZero()
         self.log_dir_path = log_dir_path or pathlib.Path(
             tempfile.TemporaryDirectory().name
         )
+
+    def compile_version_groups(self):
+        # For a single pull request for all sources, we want to use the
+        # most recent version of self.
+        self.version_groups = [list(self.source_versions[0])[-1]] + [
+            list(group) for group in self.source_versions[0:]]
+        self.versions = flatten_and_sort_source_versions(self.version_groups)
+        self.apply_table = generate_apply_table(self.versions)
+
 
     def apply_version(self, version_index: int) -> None:
         """Applies one version from each group."""
@@ -229,7 +230,6 @@ class SynthesizeLoopToolbox:
             )
             fork.source_name = source_name
             fork.commit_count = self.commit_count
-            fork.version_zero = self.version_zero
             executor.check_call(["git", "branch", "-f", fork_branch])
             forks.append(fork)
         return forks
@@ -251,14 +251,6 @@ class SynthesizeLoopToolbox:
         self.apply_version(index)
         self.checkout_new_branch(index)
         try:
-            if 0 == index:
-                if self.version_zero.branch_name:
-                    # Reuse version zero built for another source.
-                    executor.check_call(
-                        ["git", "merge", "--ff-only", self.version_zero.branch_name]
-                    )
-                    return self.version_zero.has_changes
-
             synth_log_path = self.log_dir_path / str(index) / "sponge_log.log"
             if index + 1 == len(self.versions):
                 # The youngest version.  Let exceptions raise because the
@@ -270,10 +262,6 @@ class SynthesizeLoopToolbox:
             i_has_changes = has_changes()
             if i_has_changes:
                 git.commit_all_changes(self.versions[index].version.get_comment())
-            if 0 == index:
-                # Record version zero info so other sources can reuse.
-                self.version_zero.branch_name = self.sub_branch(0)
-                self.version_zero.has_changes = i_has_changes
             return i_has_changes
         finally:
             executor.check_call(["git", "reset", "--hard", "HEAD"])
@@ -406,6 +394,7 @@ def synthesize_loop_single_pr(
 def synthesize_inner_loop(
     toolbox: SynthesizeLoopToolbox, synthesizer: AbstractSynthesizer,
 ):
+    toolbox.compile_version_groups()
     # Synthesize with the most recent version of all the sources.
     if not toolbox.synthesize_version_in_new_branch(
         synthesizer, len(toolbox.versions) - 1
