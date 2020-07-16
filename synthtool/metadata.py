@@ -142,6 +142,7 @@ def should_track_obsolete_files():
 
 
 class FileSystemEventHandler(watchdog.events.FileSystemEventHandler):
+    """Records all the files that were touched."""
     def __init__(self):
         super().__init__()
         self._touched_file_paths: [str] = list()
