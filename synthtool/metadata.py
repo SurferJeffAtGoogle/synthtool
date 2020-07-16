@@ -207,7 +207,7 @@ class MetadataTrackerAndWriter:
 
     def __exit__(self, type, value, traceback):
         if should_track_obsolete_files():
-            time.sleep(2)
+            time.sleep(2)  # Finish collecting observations about modified files.
             self.observer.stop()
             self.observer.join()
             for path in git_ignore(self.handler.get_touched_file_paths()):
