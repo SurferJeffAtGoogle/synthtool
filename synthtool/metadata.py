@@ -94,7 +94,6 @@ def write(outfile: str = "synth.metadata") -> None:
     logger.debug(f"Wrote metadata to {outfile}.")
 
 
-@deprecation.deprecated(deprecated_in="2020.02.04")
 def git_ignore(file_paths: Iterable[str]):
     """Returns a new list of the same files, with ignored files removed."""
     # Surprisingly, git check-ignore doesn't ignore .git directories, take those
@@ -190,7 +189,7 @@ class MetadataTrackerAndWriter:
         _metadata.sources.sort(key=_source_key)
         self.observer.stop()
         self.observer.join()
-        for path in self.handler.get_touched_file_paths():
+        for path in git_ignore(self.handler.get_touched_file_paths()):
             _metadata.generated_files.append(path)
         if _enable_write_metadata:
             write(self.metadata_file_path)
