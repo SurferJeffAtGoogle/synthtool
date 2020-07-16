@@ -191,7 +191,7 @@ class MetadataTrackerAndWriter:
         self.observer.stop()
         self.observer.join()
         for path in self.handler.get_touched_file_paths():
-            _metadata.generated_files.add(path)
+            _metadata.generated_files.append(path)
         if _enable_write_metadata:
             write(self.metadata_file_path)
 
