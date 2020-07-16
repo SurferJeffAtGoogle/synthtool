@@ -23,7 +23,6 @@ import time
 import threading
 from typing import Dict, Iterable, List
 
-import deprecation
 import google.protobuf.json_format
 import watchdog.events
 import watchdog.observers
@@ -159,9 +158,10 @@ def should_track_obsolete_files():
 
 class FileSystemEventHandler(watchdog.events.FileSystemEventHandler):
     """Records all the files that were touched."""
+
     def __init__(self, watch_dir: pathlib.Path):
         super().__init__()
-        self._touched_file_paths: [str] = list()
+        self._touched_file_paths: List[str] = list()
         self._touched_lock = threading.Lock()
         self._watch_dir = watch_dir
 

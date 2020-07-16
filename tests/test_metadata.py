@@ -266,7 +266,7 @@ def test_set_track_obsolete_files(preserve_track_obsolete_file_flag):
     assert not metadata.should_track_obsolete_files()
     metadata.set_track_obsolete_files(True)
     assert metadata.should_track_obsolete_files()
-    
+
 
 def test_used_to_append_git_log_to_metadata(source_tree):
     """Synthtool used to append the git log for each git source.  But nothing
