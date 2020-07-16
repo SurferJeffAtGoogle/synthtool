@@ -19,6 +19,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import threading
 from typing import Dict, Iterable, List
 
@@ -31,6 +32,7 @@ from synthtool.log import logger
 from synthtool.protos import metadata_pb2
 
 _metadata = metadata_pb2.Metadata()
+_track_obsolete_files = False
 
 
 def reset() -> None:
@@ -63,12 +65,6 @@ def add_client_destination(**kwargs) -> None:
     _metadata.destinations.add(client=metadata_pb2.ClientDestination(**kwargs))
 
 
-def _add_new_files(files: Iterable[str]) -> None:
-    for filepath in sorted(files):
-        new_file = _metadata.new_files.add()
-        new_file.path = _git_slashes(filepath)
-
-
 def _git_slashes(path: str):
     # git speaks only forward slashes
     return path.replace("\\", "/") if sys.platform == "win32" else path
@@ -92,6 +88,26 @@ def write(outfile: str = "synth.metadata") -> None:
         fh.write(jsonified)
 
     logger.debug(f"Wrote metadata to {outfile}.")
+
+
+def _remove_obsolete_files(old_metadata):
+    """Remove obsolete files from the file system.
+
+    Call add_new_files() before this function or it will remove all generated
+    files.
+
+    Parameters:
+        old_metadata:  old metadata loaded from a call to read_or_empty().
+    """
+    old_files = set(old_metadata.generated_files)
+    new_files = set(_metadata.generated_files)
+    obsolete_files = old_files - new_files
+    for file_path in git_ignore(obsolete_files):
+        try:
+            logger.info(f"Removing obsolete file {file_path}...")
+            os.unlink(file_path)
+        except FileNotFoundError:
+            pass  # Already deleted.  That's OK.
 
 
 def git_ignore(file_paths: Iterable[str]):
@@ -131,22 +147,23 @@ def git_ignore(file_paths: Iterable[str]):
     ]
 
 
-@deprecation.deprecated(deprecated_in="2020.02.04")
-def set_track_obsolete_files(ignored=True):
-    pass
+def set_track_obsolete_files(track_obsolete_files=True):
+    """Instructs synthtool to track and remove obsolete files."""
+    global _track_obsolete_files
+    _track_obsolete_files = track_obsolete_files
 
 
-@deprecation.deprecated(deprecated_in="2020.02.04")
 def should_track_obsolete_files():
-    return False
+    return _track_obsolete_files
 
 
 class FileSystemEventHandler(watchdog.events.FileSystemEventHandler):
     """Records all the files that were touched."""
-    def __init__(self):
+    def __init__(self, watch_dir: pathlib.Path):
         super().__init__()
         self._touched_file_paths: [str] = list()
         self._touched_lock = threading.Lock()
+        self._watch_dir = watch_dir
 
     def on_any_event(self, event):
         if event.is_directory:
@@ -155,11 +172,14 @@ class FileSystemEventHandler(watchdog.events.FileSystemEventHandler):
             watchdog.events.EVENT_TYPE_MODIFIED,
             watchdog.events.EVENT_TYPE_CREATED,
         ):
-            with self._touched_lock:
-                self._touched_file_paths.append(event.src_path)
+            touched_path = event.src_path
         elif event.event_type == watchdog.events.EVENT_TYPE_MOVED:
-            with self._touched_lock:
-                self._touched_file_paths.append(event.dest_path)
+            touched_path = event.dest_path
+        else:
+            return
+        touched_path = pathlib.Path(touched_path).relative_to(self._watch_dir)
+        with self._touched_lock:
+            self._touched_file_paths.append(str(touched_path))
 
     def get_touched_file_paths(self) -> List[str]:
         # deduplicate and sort
@@ -179,19 +199,24 @@ class MetadataTrackerAndWriter:
     def __enter__(self):
         self.old_metadata = _read_or_empty(self.metadata_file_path)
         _add_self_git_source()
-        watch_dir = str(pathlib.Path(self.metadata_file_path).parent)
-        self.handler = FileSystemEventHandler()
+        watch_dir = pathlib.Path(self.metadata_file_path).parent
+        self.handler = FileSystemEventHandler(watch_dir)
         self.observer = watchdog.observers.Observer()
-        self.observer.schedule(self.handler, watch_dir, recursive=True)
+        self.observer.schedule(self.handler, str(watch_dir), recursive=True)
         self.observer.start()
 
     def __exit__(self, type, value, traceback):
+        if should_track_obsolete_files():
+            time.sleep(2)
+            self.observer.stop()
+            self.observer.join()
+            for path in git_ignore(self.handler.get_touched_file_paths()):
+                _metadata.generated_files.append(path)
+            _remove_obsolete_files(self.old_metadata)
+        else:
+            self.observer.stop()
         _clear_local_paths(get())
         _metadata.sources.sort(key=_source_key)
-        self.observer.stop()
-        self.observer.join()
-        for path in git_ignore(self.handler.get_touched_file_paths()):
-            _metadata.generated_files.append(path)
         if _enable_write_metadata:
             write(self.metadata_file_path)
 
