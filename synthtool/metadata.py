@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import deprecation
 import locale
 import os
 import pathlib
@@ -20,13 +19,15 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from typing import List, Iterable, Dict
+import threading
+from typing import Dict, Iterable, List
 
+import deprecation
 import google.protobuf.json_format
+import watchdog
 
 from synthtool.log import logger
 from synthtool.protos import metadata_pb2
-
 
 _metadata = metadata_pb2.Metadata()
 
@@ -70,29 +71,6 @@ def _add_new_files(files: Iterable[str]) -> None:
 def _git_slashes(path: str):
     # git speaks only forward slashes
     return path.replace("\\", "/") if sys.platform == "win32" else path
-
-
-def _get_new_files(newer_than: float) -> List[str]:
-    """Searchs current directory for new files and returns them in a list.
-
-    Parameters:
-        newer_than: any file modified after this timestamp (from time.time())
-            will be added to the metadata
-    """
-    new_files = []
-    for (root, dirs, files) in os.walk(os.getcwd()):
-        for filename in files:
-            filepath = os.path.join(root, filename)
-            try:
-                mtime = os.path.getmtime(filepath)
-            except FileNotFoundError:
-                logger.warning(
-                    f"FileNotFoundError while getting modified time for {filepath}."
-                )
-                continue
-            if mtime >= newer_than:
-                new_files.append(os.path.relpath(filepath))
-    return new_files
 
 
 def _read_or_empty(path: str = "synth.metadata"):
@@ -163,6 +141,34 @@ def should_track_obsolete_files():
     return False
 
 
+class FileSystemEventHandler(watchdog.events.FileSystemEventHandler):
+    def __init__(self):
+        super().__init__()
+        self._touched_file_paths: [str] = list()
+        self._touched_lock = threading.Lock()
+
+    def on_any_event(self, event):
+        if event.is_directory:
+            return
+        if event.event_type in (
+            watchdog.events.EVENT_TYPE_MODIFIED,
+            watchdog.events.EVENT_TYPE_CREATED,
+        ):
+            with self._touched_lock:
+                self._touched_file_paths.append(event.src_path)
+        elif event.event_type == watchdog.events.EVENT_TYPE_MOVED:
+            with self._touched_lock:
+                self._touched_file_paths.append(event.dest_path)
+
+    def get_touched_file_paths(self) -> List[str]:
+        # deduplicate and sort
+        with self._touched_lock:
+            paths = set(self._touched_file_paths)
+        result = list(paths)
+        result.sort()
+        return result
+
+
 class MetadataTrackerAndWriter:
     """Writes metadata file upon exiting scope."""
 
@@ -172,10 +178,18 @@ class MetadataTrackerAndWriter:
     def __enter__(self):
         self.old_metadata = _read_or_empty(self.metadata_file_path)
         _add_self_git_source()
+        watch_dir = str(pathlib.Path(self.metadata_file_path).parent())
+        self.handler = FileSystemEventHandler()
+        self.observer = watchdog.observers.Observer()
+        self.observer.schedule(self.handler, watch_dir, recursive=True)
 
     def __exit__(self, type, value, traceback):
         _clear_local_paths(get())
         _metadata.sources.sort(key=_source_key)
+        self.observer.stop()
+        self.observer.join()
+        for path in self.handler.get_touched_file_paths():
+            _metadata.generated_files.add(path)
         if _enable_write_metadata:
             write(self.metadata_file_path)
 
