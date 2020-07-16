@@ -24,7 +24,8 @@ from typing import Dict, Iterable, List
 
 import deprecation
 import google.protobuf.json_format
-import watchdog
+import watchdog.events
+import watchdog.observers
 
 from synthtool.log import logger
 from synthtool.protos import metadata_pb2
@@ -178,10 +179,11 @@ class MetadataTrackerAndWriter:
     def __enter__(self):
         self.old_metadata = _read_or_empty(self.metadata_file_path)
         _add_self_git_source()
-        watch_dir = str(pathlib.Path(self.metadata_file_path).parent())
+        watch_dir = str(pathlib.Path(self.metadata_file_path).parent)
         self.handler = FileSystemEventHandler()
         self.observer = watchdog.observers.Observer()
         self.observer.schedule(self.handler, watch_dir, recursive=True)
+        self.observer.start()
 
     def __exit__(self, type, value, traceback):
         _clear_local_paths(get())
