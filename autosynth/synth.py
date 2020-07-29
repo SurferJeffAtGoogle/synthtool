@@ -24,7 +24,7 @@ import subprocess
 import sys
 import tempfile
 import typing
-from typing import Dict, Sequence
+from typing import Dict, Sequence, Optional
 
 import synthtool.sources.git as synthtool_git
 
@@ -66,6 +66,8 @@ class FlatVersion:
         self.version = version
         self.sort_key = (self.version.get_timestamp(), group_number)
         self.merged = False
+        # This gets set to true or false after synthesizing code for his version.
+        self.branch_has_changes: Optional[bool] = None
 
 
 def flatten_and_sort_source_versions(
@@ -248,6 +250,12 @@ class SynthesizeLoopToolbox:
         Returns:
             bool -- True if the code generated differs.
         """
+        # Did we already generate this version?  Return cached result.
+        branch_already_has_changes = self.versions[index].branch_has_changes
+        if branch_already_has_changes is not None:
+            self.checkout_sub_branch(index)
+            return branch_already_has_changes
+
         self.apply_version(index)
         self.checkout_new_branch(index)
         try:
@@ -274,6 +282,8 @@ class SynthesizeLoopToolbox:
                 # Record version zero info so other sources can reuse.
                 self.version_zero.branch_name = self.sub_branch(0)
                 self.version_zero.has_changes = i_has_changes
+            # Cache the outcome.
+            self.versions[index].branch_has_changes = i_has_changes
             return i_has_changes
         finally:
             executor.check_call(["git", "reset", "--hard", "HEAD"])
@@ -356,6 +366,12 @@ def synthesize_loop(
     """
     if not toolbox.versions:
         return 0  # No versions, nothing to synthesize.
+
+    # Synthesize the library with the most recent versions of all sources.
+    youngest = len(toolbox.versions) - 1
+    has_changes = toolbox.synthesize_version_in_new_branch(synthesizer, youngest)
+    if not has_changes:
+        return 0  # No changes, nothing to do.
 
     try:
         if multiple_prs:
