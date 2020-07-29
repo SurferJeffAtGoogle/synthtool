@@ -18,18 +18,18 @@
 import argparse
 import json
 import os
+import os.path
 import pathlib
 import re
 import subprocess
 import sys
 import tempfile
 import typing
-from typing import Dict, Sequence, Optional
-
-import synthtool.sources.git as synthtool_git
+from typing import Dict, Optional, Sequence
 
 import autosynth
 import autosynth.flags
+import synthtool.sources.git as synthtool_git
 from autosynth import executor, git, git_source, github
 from autosynth.abstract_source import AbstractSourceVersion
 from autosynth.change_pusher import (
@@ -53,6 +53,25 @@ def load_metadata(metadata_path: str):
     if not path.exists():
         return {}
     return json.loads(path.read_text())
+
+
+def compose_metadata_cache_branch_name(metadata_path: str) -> str:
+    """The cache branch stores synth.metadata files.  When autosynth runs but
+    the generated code does not differ, it stores synth.metadata in the cache branch.
+
+    For monorepos, the branch name must include the API name.  metadata_path lives in
+    a directory named after the API, so use the directory name.
+
+    Args:
+        metadata_path (str): path to synth.metadata
+
+    Returns:
+        [str]: the branch name
+    """
+    metadata_path = os.path.abspath(metadata_path)
+    local_repo_dir = git.get_repo_root_dir(metadata_path)
+    relpath = os.path.relpath(metadata_path, local_repo_dir)
+    return relpath.replace("/", "-")
 
 
 class FlatVersion:
@@ -147,6 +166,7 @@ class SynthesizeLoopToolbox:
         metadata_path: str,
         synth_path: str,
         log_dir_path: pathlib.Path = None,
+        cache_branch_name: str = "",
     ):
         self._temp_dir = temp_dir
         self._metadata_path = metadata_path
@@ -154,6 +174,7 @@ class SynthesizeLoopToolbox:
         self._synth_path = synth_path or ""
 
         self.branch = branch
+        self.cache_branch_name = cache_branch_name
         self.version_groups = [list(group) for group in source_versions]
         self.versions = flatten_and_sort_source_versions(source_versions)
         self.apply_table = generate_apply_table(self.versions)
@@ -228,6 +249,7 @@ class SynthesizeLoopToolbox:
                 self._metadata_path,
                 self._synth_path,
                 self.log_dir_path / source_name,
+                self.cache_branch_name,
             )
             fork.source_name = source_name
             fork.commit_count = self.commit_count
@@ -371,6 +393,16 @@ def synthesize_loop(
     youngest = len(toolbox.versions) - 1
     has_changes = toolbox.synthesize_version_in_new_branch(synthesizer, youngest)
     if not has_changes:
+        if toolbox.cache_branch_name:
+            # Cache the generated synth.metadata.
+            git.commit_all_changes("no changes")
+            executor.check_call(["git", "checkout", toolbox.branch])
+            executor.check_call(["git", "branch", "-f", toolbox.cache_branch_name])
+            executor.check_call(
+                ["git", "merge", "--squash", toolbox.sub_branch(youngest)]
+            )
+            git.commit_all_changes("no changes")
+            git.push_changes(toolbox.cache_branch_name)
         return 0  # No changes, nothing to do.
 
     try:
@@ -574,8 +606,9 @@ def _inner_main(temp_dir: str) -> int:
     )
     logger.info(f"logs will be written to: {base_synth_log_path}")
 
-    working_repo_path = synthtool_git.clone(f"https://github.com/{args.repository}.git",
-        single_branch=False)
+    working_repo_path = synthtool_git.clone(
+        f"https://github.com/{args.repository}.git", single_branch=False
+    )
 
     try:
         os.chdir(working_repo_path)
@@ -599,6 +632,11 @@ def _inner_main(temp_dir: str) -> int:
         metadata = load_metadata(metadata_path)
         multiple_commits = flags[autosynth.flags.AUTOSYNTH_MULTIPLE_COMMITS]
         multiple_prs = flags[autosynth.flags.AUTOSYNTH_MULTIPLE_PRS]
+        cache_branch_name = (
+            compose_metadata_cache_branch_name(metadata)
+            if flags[autosynth.flags.AUTOSYNTH_METADATA_CACHE]
+            else ""
+        )
         if (not multiple_commits and not multiple_prs) or not metadata:
             if change_pusher.check_if_pr_already_exists(branch):
                 return 0
@@ -628,7 +666,9 @@ def _inner_main(temp_dir: str) -> int:
             # Enumerate the versions to loop over.
             sources = metadata.get("sources", [])
             source_versions = [
-                git_source.enumerate_versions_for_working_repo(metadata_path, sources)
+                git_source.enumerate_versions_for_working_repo(
+                    metadata_path, cache_branch_name, sources
+                )
             ]
             # Add supported source version types below:
             source_versions.extend(
@@ -646,6 +686,7 @@ def _inner_main(temp_dir: str) -> int:
                 metadata_path,
                 args.synth_path,
                 base_synth_log_path,
+                cache_branch_name,
             )
             if not multiple_commits:
                 change_pusher = SquashingChangePusher(change_pusher)

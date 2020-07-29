@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import datetime
-import os.path
 import pathlib
 import re
 import subprocess
@@ -204,27 +203,10 @@ def enumerate_versions(
     return versions
 
 
-def compose_metadata_cache_branch_name(metadata_path: str) -> str:
-    """Compose the branch name where we cache synth.metadata files of recent builds that
-    did not change the output.
-
-    For monorepos, the branch name must include the API name.  metadata_path lives in
-    a directory named after the API, so use the directory name.
-
-    Args:
-        metadata_path (str): path to synth.metadata
-
-    Returns:
-        [str]: the branch name
-    """
-    metadata_path = os.path.abspath(metadata_path)
-    local_repo_dir = git.get_repo_root_dir(metadata_path)
-    relpath = os.path.relpath(metadata_path, local_repo_dir)
-    return relpath.replace('/', '-')
-
-
 def enumerate_versions_for_working_repo(
-    metadata_path: str, sources: typing.List[typing.Dict[str, typing.Dict]]
+    metadata_path: str,
+    cache_branch_name: str,
+    sources: typing.List[typing.Dict[str, typing.Dict]],
 ) -> typing.List[autosynth.abstract_source.AbstractSourceVersion]:
     """Enumerates the most recent commit to the current working directory only.
 
@@ -239,6 +221,7 @@ def enumerate_versions_for_working_repo(
     """
     # Get the repo root directory that contains metadata_path.
     local_repo_dir = git.get_repo_root_dir(metadata_path)
+
     # Find the most recent commit hash.
     head_sha = executor.run(
         ["git", "log", "-1", "--pretty=%H"],
@@ -247,20 +230,23 @@ def enumerate_versions_for_working_repo(
         cwd=local_repo_dir,
         check=True,
     ).stdout.strip()
+
     # Should we use the cached synth.metadata?
-    cache_branch = compose_metadata_cache_branch_name(metadata_path)
-    proc = executor.run(
-        ["git", "log", "--pretty=%H", cache_branch],
-        stdout=subprocess.PIPE,
-        universal_newlines=True,
-        cwd=local_repo_dir,
-    )
-    if 0 == proc.returncode:
-        lines = proc.stdout.strip().split()
-        if head_sha in lines:
-            # Yes, we can use the cache branch, because the HEAD version in master is
-            # an ancestor of the cache branch.
-            head_sha = lines[0]
+    if cache_branch_name:
+        proc = executor.run(
+            ["git", "log", "--pretty=%H", cache_branch_name],
+            stdout=subprocess.PIPE,
+            universal_newlines=True,
+            cwd=local_repo_dir,
+        )
+        if 0 == proc.returncode:
+            lines = proc.stdout.strip().split()
+            if head_sha in lines:
+                # Yes, we can use the cache branch, because the HEAD version in master
+                # is an ancestor of the cache branch.
+                head_sha = lines[0]
+        else:
+            pass  # Failed because the cache branch doesn't exist yet.  Ok.
 
     # Get the remote url.
     remote = executor.run(
