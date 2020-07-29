@@ -298,8 +298,7 @@ class SynthesizeLoopToolbox:
                 synthesizer.synthesize_and_catch_exception(synth_log_path, self.environ)
             # Save changes into the sub branch.
             i_has_changes = has_changes()
-            if i_has_changes:
-                git.commit_all_changes(self.versions[index].version.get_comment())
+            git.commit_all_changes(self.versions[index].version.get_comment())
             if 0 == index:
                 # Record version zero info so other sources can reuse.
                 self.version_zero.branch_name = self.sub_branch(0)
@@ -395,14 +394,22 @@ def synthesize_loop(
     if not has_changes:
         if toolbox.cache_branch_name:
             # Cache the generated synth.metadata.
-            git.commit_all_changes("no changes")
-            executor.check_call(["git", "checkout", toolbox.branch])
             executor.check_call(["git", "branch", "-f", toolbox.cache_branch_name])
+            executor.check_call(["git", "checkout", toolbox.cache_branch_name])
             executor.check_call(
                 ["git", "merge", "--squash", toolbox.sub_branch(youngest)]
             )
-            git.commit_all_changes("no changes")
-            git.push_changes(toolbox.cache_branch_name)
+            git_status = executor.run(
+                ["git", "status", "--porcelain"],
+                universal_newlines=True,
+                stdout=subprocess.PIPE,
+                check=True,
+            ).stdout.strip()
+            if git_status:
+                git.commit_all_changes("no changes")
+                git.push_changes(toolbox.cache_branch_name)
+            else:
+                pass  # Not even synth.metadata changed.  Ok.
         return 0  # No changes, nothing to do.
 
     try:
@@ -635,7 +642,7 @@ def _inner_main(temp_dir: str) -> int:
         multiple_prs = flags[autosynth.flags.AUTOSYNTH_MULTIPLE_PRS]
         cache_branch_name = ""
         if flags[autosynth.flags.AUTOSYNTH_METADATA_CACHE]:
-            cache_branch_name = compose_metadata_cache_branch_name(metadata)
+            cache_branch_name = compose_metadata_cache_branch_name(metadata_path)
             if args.branch_suffix:
                 cache_branch_name = f"{cache_branch_name}-{args.branch_suffix}"
 
