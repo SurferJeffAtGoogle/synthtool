@@ -629,14 +629,16 @@ def _inner_main(temp_dir: str) -> int:
             if env_value:
                 flags[key] = False if env_value.lower() == "false" else env_value
 
+        # Interpret flags.
         metadata = load_metadata(metadata_path)
         multiple_commits = flags[autosynth.flags.AUTOSYNTH_MULTIPLE_COMMITS]
         multiple_prs = flags[autosynth.flags.AUTOSYNTH_MULTIPLE_PRS]
-        cache_branch_name = (
-            compose_metadata_cache_branch_name(metadata)
-            if flags[autosynth.flags.AUTOSYNTH_METADATA_CACHE]
-            else ""
-        )
+        cache_branch_name = ""
+        if flags[autosynth.flags.AUTOSYNTH_METADATA_CACHE]:
+            cache_branch_name = compose_metadata_cache_branch_name(metadata)
+            if args.branch_suffix:
+                cache_branch_name = f"{cache_branch_name}-{args.branch_suffix}"
+
         if (not multiple_commits and not multiple_prs) or not metadata:
             if change_pusher.check_if_pr_already_exists(branch):
                 return 0
