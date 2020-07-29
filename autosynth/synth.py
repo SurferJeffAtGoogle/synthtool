@@ -66,7 +66,7 @@ class FlatVersion:
         self.version = version
         self.sort_key = (self.version.get_timestamp(), group_number)
         self.merged = False
-        # This gets set to true or false after synthesizing code for his version.
+        # This gets set to true or false after synthesizing code for this version.
         self.branch_has_changes: Optional[bool] = None
 
 
@@ -574,7 +574,8 @@ def _inner_main(temp_dir: str) -> int:
     )
     logger.info(f"logs will be written to: {base_synth_log_path}")
 
-    working_repo_path = synthtool_git.clone(f"https://github.com/{args.repository}.git")
+    working_repo_path = synthtool_git.clone(f"https://github.com/{args.repository}.git",
+        single_branch=False)
 
     try:
         os.chdir(working_repo_path)
