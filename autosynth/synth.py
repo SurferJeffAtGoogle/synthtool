@@ -314,7 +314,7 @@ class SynthesizeLoopToolbox:
     def metadata_contains_generated_files(self, branch_name: str) -> bool:
         executor.check_call(["git", "checkout", branch_name])
         metadata = load_metadata(self._metadata_path)
-        return bool(metadata.get("generated_files"))
+        return bool(metadata.get("generatedFiles"))
 
 
 def _compose_pr_title(
