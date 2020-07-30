@@ -314,7 +314,7 @@ class SynthesizeLoopToolbox:
     def metadata_contains_generated_files(self, branch_name: str) -> bool:
         executor.check_call(["git", "checkout", branch_name])
         metadata = load_metadata(self._metadata_path)
-        return bool(metadata.get("generated_files"))        
+        return bool(metadata.get("generated_files"))
 
 
 def _compose_pr_title(
@@ -380,7 +380,9 @@ def synthesize_loop(
             # Special case: the repo owner turned on obsolete file tracking.
             # Generate a one-time PR containing only metadata changes.
             executor.check_call(["git", "checkout", toolbox.branch])
-            executor.check_call(["git", "merge", "--squash", toolbox.sub_branch(youngest)])
+            executor.check_call(
+                ["git", "merge", "--squash", toolbox.sub_branch(youngest)]
+            )
             pr_title = "chore: start tracking obsolete files"
             executor.check_call(["git", "commit", "-m", pr_title])
             pr = change_pusher.push_changes(1, toolbox.branch, pr_title)
@@ -406,7 +408,7 @@ def synthesize_loop(
         synthesize_loop_single_pr(toolbox, change_pusher, synthesizer)
         # But still report the failure.
         raise
-    
+
     return synthesize_loop_single_pr(toolbox, change_pusher, synthesizer)
 
 
