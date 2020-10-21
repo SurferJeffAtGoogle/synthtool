@@ -18,6 +18,8 @@ import pathlib
 import shutil
 import subprocess
 import sys
+import unittest.mock
+from unittest.mock import call, patch
 
 import pytest
 
@@ -280,6 +282,36 @@ def test_read_metadata(tmpdir):
     metadata.reset()
     add_sample_client_destination()
     metadata.write(tmpdir / "synth.metadata")
+    read_metadata = metadata._read_or_empty(tmpdir / "synth.metadata")
+    assert metadata.get() == read_metadata
+
+class MockLogger:
+    def __init__(self):
+        self.criticals = []
+
+    def critical(self, *args):
+        self.criticals.append(args)
+
+
+def test_read_metadata_version(tmpdir):
+    metadata.reset()
+    metadata.get().metadata_version = 99999
+    add_sample_client_destination()
+    metadata.write(tmpdir / "synth.metadata")
+    mock_logger = MockLogger()
+    
+    read_metadata = metadata._read_or_empty(tmpdir / "synth.metadata", mock_logger)
+    assert metadata.get() == read_metadata
+    assert len(mock_logger.criticals) > 0
+
+
+def test_read_metadata_version_again(tmpdir):
+    # Again without a mock so I can manually confirm the log message looks right.
+    metadata.reset()
+    metadata.get().metadata_version = 99999
+    add_sample_client_destination()
+    metadata.write(tmpdir / "synth.metadata")
+    
     read_metadata = metadata._read_or_empty(tmpdir / "synth.metadata")
     assert metadata.get() == read_metadata
 
