@@ -188,7 +188,8 @@ def test_start_and_stop_tracking(source_tree, preserve_track_obsolete_file_flag)
 
 
 def test_start_and_stop_tracking_without_context(
-    source_tree, preserve_track_obsolete_file_flag):
+    source_tree, preserve_track_obsolete_file_flag
+):
     # Just confirm it doesn't crash the process.  Will write to Error log.
     metadata.start_tracking_generated_files()
     metadata.stop_tracking_generated_files()
@@ -330,6 +331,7 @@ def test_read_metadata(tmpdir):
     read_metadata = metadata._read_or_empty(tmpdir / "synth.metadata")
     assert metadata.get() == read_metadata
 
+
 class MockLogger:
     def __init__(self):
         self.criticals = []
@@ -344,7 +346,7 @@ def test_read_metadata_version(tmpdir):
     add_sample_client_destination()
     metadata.write(tmpdir / "synth.metadata")
     mock_logger = MockLogger()
-    
+
     read_metadata = metadata._read_or_empty(tmpdir / "synth.metadata", mock_logger)
     assert metadata.get() == read_metadata
     assert len(mock_logger.criticals) > 0
@@ -356,7 +358,7 @@ def test_read_metadata_version_again(tmpdir):
     metadata.get().metadata_version = 99999
     add_sample_client_destination()
     metadata.write(tmpdir / "synth.metadata")
-    
+
     read_metadata = metadata._read_or_empty(tmpdir / "synth.metadata")
     assert metadata.get() == read_metadata
 
