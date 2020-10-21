@@ -18,8 +18,6 @@ import pathlib
 import shutil
 import subprocess
 import sys
-import unittest.mock
-from unittest.mock import call, patch
 
 import pytest
 
