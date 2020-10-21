@@ -302,7 +302,7 @@ def start_tracking_generated_files():
         tracker.start_tracking()
     else:
         logger.error(
-            "start_tracking_generated_files() called by there's no "
+            "start_tracking_generated_files() called, but there's no "
             + "MetadataTrackerAndWriter in the current thread context.\n"
             + "This could happen if you invoked synth.py directly instead of invoking\n"
             + "   python -m synthtool synth.py")
@@ -315,7 +315,7 @@ def stop_tracking_generated_files():
         tracker.stop_tracking()
     else:
         logger.error(
-            "stop_tracking_generated_files() called by there's no "
+            "stop_tracking_generated_files() called, but there's no "
             + "MetadataTrackerAndWriter in the current thread context.\n"
             + "This could happen if you invoked synth.py directly instead of invoking\n"
             + "   python -m synthtool synth.py")

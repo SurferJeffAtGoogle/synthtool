@@ -187,6 +187,13 @@ def test_start_and_stop_tracking(source_tree, preserve_track_obsolete_file_flag)
     assert ["code/b"] == new_file_paths
 
 
+def test_start_and_stop_tracking_without_context(
+    source_tree, preserve_track_obsolete_file_flag):
+    # Just confirm it doesn't crash the process.  Will write to Error log.
+    metadata.start_tracking_generated_files()
+    metadata.stop_tracking_generated_files()
+
+
 def test_gitignored_files_ignored(source_tree, preserve_track_obsolete_file_flag):
     metadata.set_track_obsolete_files(True)
     with metadata.MetadataTrackerAndWriter(source_tree.tmpdir / "synth.metadata"):
