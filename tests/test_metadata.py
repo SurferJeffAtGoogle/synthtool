@@ -149,6 +149,44 @@ def test_new_files_found(source_tree, preserve_track_obsolete_file_flag):
     assert ["code/b"] == new_file_paths
 
 
+def test_start_tracking(source_tree, preserve_track_obsolete_file_flag):
+    metadata.set_track_obsolete_files(True)
+    with metadata.MetadataTrackerAndWriter(source_tree.tmpdir / "synth.metadata"):
+        source_tree.write("code/a")
+        metadata.start_tracking_generated_files()
+        source_tree.write("code/b")
+
+    # Confirm add_new_files found the new files and ignored the old one.
+    new_file_paths = [path for path in metadata.get().generated_files]
+    assert ["code/b"] == new_file_paths
+
+
+def test_stop_tracking(source_tree, preserve_track_obsolete_file_flag):
+    metadata.set_track_obsolete_files(True)
+    with metadata.MetadataTrackerAndWriter(source_tree.tmpdir / "synth.metadata"):
+        source_tree.write("code/a")
+        metadata.stop_tracking_generated_files()
+        source_tree.write("code/b")
+
+    # Confirm add_new_files found the new files and ignored the old one.
+    new_file_paths = [path for path in metadata.get().generated_files]
+    assert ["code/a"] == new_file_paths
+
+
+def test_start_and_stop_tracking(source_tree, preserve_track_obsolete_file_flag):
+    metadata.set_track_obsolete_files(True)
+    with metadata.MetadataTrackerAndWriter(source_tree.tmpdir / "synth.metadata"):
+        source_tree.write("code/a")
+        metadata.start_tracking_generated_files()
+        source_tree.write("code/b")
+        metadata.stop_tracking_generated_files()
+        source_tree.write("code/c")
+
+    # Confirm add_new_files found the new files and ignored the old one.
+    new_file_paths = [path for path in metadata.get().generated_files]
+    assert ["code/b"] == new_file_paths
+
+
 def test_gitignored_files_ignored(source_tree, preserve_track_obsolete_file_flag):
     metadata.set_track_obsolete_files(True)
     with metadata.MetadataTrackerAndWriter(source_tree.tmpdir / "synth.metadata"):

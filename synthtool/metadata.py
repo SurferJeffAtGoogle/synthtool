@@ -270,6 +270,7 @@ class MetadataTrackerAndWriter:
         """Shut down existing watchdog observer.  Does nothing if not observing."""
         observer = getattr(self, "observer", None)
         if observer:
+            time.sleep(2)  # Finish collecting observations about modified files.
             observer.stop()
             observer.join()
             del self.observer
@@ -280,7 +281,6 @@ class MetadataTrackerAndWriter:
             pass  # An exception was raised.  Don't write metadata or clean up.
         else:
             if should_track_obsolete_files():
-                time.sleep(2)  # Finish collecting observations about modified files.
                 self.stop_tracking()
                 for path in git_ignore(self.handler.get_touched_file_paths()):
                     _metadata.generated_files.append(path)
@@ -299,7 +299,7 @@ def start_tracking_generated_files():
     If tracking is already enabled, then clears the list of generated files."""
     tracker = MetadataTrackerAndWriter.get_live_tracker()
     if tracker:
-        tracker.start_tracking_generated_files()
+        tracker.start_tracking()
     else:
         logger.error(
             "start_tracking_generated_files() called by there's no "
@@ -312,7 +312,7 @@ def stop_tracking_generated_files():
     """Stop tracking generated files."""
     tracker = MetadataTrackerAndWriter.get_live_tracker()
     if tracker:
-        tracker.stop_tracking_generated_files()
+        tracker.stop_tracking()
     else:
         logger.error(
             "stop_tracking_generated_files() called by there's no "
