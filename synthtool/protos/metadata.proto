@@ -26,6 +26,7 @@ message Metadata {
     repeated Destination destinations = 3;
     repeated NewFile new_files = 4 [deprecated=true];
     repeated string generated_files = 5;
+    int32 metadata_version = 6;
 }
 
 message Source {
