@@ -17,22 +17,6 @@ RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | b
 # I learned this from https://geedew.com/What-does-unsafe-perm-in-npm-actually-do/
 RUN /bin/bash -c "source /root/.nvm/nvm.sh && nvm install --lts && npm config set unsafe-perm true"
 
-####################### Install bazel 3.0.0
-RUN mkdir -p /bazel
-RUN curl -L https://github.com/bazelbuild/bazel/releases/download/3.0.0/bazel-3.0.0-linux-x86_64 -o /bazel/bazel
-RUN chmod +x /bazel/bazel
-ENV PATH="/bazel:${PATH}"
-
-# bazel requires zip.
-RUN apt-get update
-RUN apt-get install zip
-
-###################### Install java
-RUN curl -L https://download.java.net/java/GA/jdk15.0.1/51f4f36ad4ef43e39d0dfdbaf6549e32/9/GPL/openjdk-15.0.1_linux-x64_bin.tar.gz -o java.tar.gz
-RUN gunzip java.tar.gz
-RUN tar xf java.tar
-ENV PATH="/jdk-15.0.1/bin:${PATH}"
-
 ###################### Install synthtool's requirements.
 COPY requirements.txt /synthtool/requirements.txt
 RUN pip install -r /synthtool/requirements.txt
@@ -45,5 +29,3 @@ COPY synthtool /synthtool/synthtool
 COPY autosynth /synthtool/autosynth
 COPY docker /synthtool/docker
 
-# By default, display instructions on how to run synthtool.
-CMD ["/bin/cat", "/synthtool/docker/README.txt"]
