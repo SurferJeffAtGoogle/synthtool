@@ -1,5 +1,19 @@
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # build from the root of this repo:
-# docker build -t gcr.io/cloud-devrel-kokoro-resources/synthtool -f docker/owlbot/nodejs/Dockerfile .
+# docker build -t gcr.io/cloud-devrel-kokoro-resources/owlbot-nodejs -f docker/owlbot/nodejs/Dockerfile .
 FROM python:3.6.12-buster
 
 WORKDIR /
@@ -21,11 +35,17 @@ RUN /bin/bash -c "source /root/.nvm/nvm.sh && nvm install --lts && npm config se
 COPY requirements.txt /synthtool/requirements.txt
 RUN pip install -r /synthtool/requirements.txt
 
-# Put synthtool in the PYTHONPATH so we can invoke it with `python -m autosynth`.
+# Put synthtool in the PYTHONPATH so owlbot.py scripts will find it.
 ENV PYTHONPATH="/synthtool"
+
+# Tell synthtool to pull templates from this docker image instead of from
+# the live repo.
+ENV SYNTHTOOL_TEMPLATES="/synthtool/synthtool/gcp/templates"
 
 # Copy synthtool.
 COPY synthtool /synthtool/synthtool
 COPY autosynth /synthtool/autosynth
 COPY docker /synthtool/docker
 
+ENTRYPOINT [ "/bin/bash" ]
+CMD [ "/synthtool/docker/owlbot/nodejs/entrypoint.sh" ]
