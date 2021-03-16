@@ -272,7 +272,7 @@ def owlbot_main():
     call this function.
 
     Depends on owl-bot copying into a staging directory, so your .Owlbot.yaml should
-    look something like this:
+    look a lot like this:
 
         docker:
             image: gcr.io/repo-automation-bots/owlbot-nodejs:latest
@@ -295,10 +295,12 @@ def owlbot_main():
         # Reorder the versions so the default version always comes last.
         versions = [v for v in versions if v != default_version] + [default_version]
 
+        # Copy each version directory into the root.
         for version in versions:
             library = staging / version
             _tracked_paths.add(library)
             s_copy(library, excludes=['README.md', 'package.json', 'src/index.ts'])
+        # The staging directory should never be merged into the main branch.
         shutil.rmtree(staging)
 
 
