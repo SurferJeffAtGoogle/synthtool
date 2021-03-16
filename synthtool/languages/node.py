@@ -282,14 +282,16 @@ def owlbot_main():
 
         deep-copy-regex:
             - source: /google/cloud/video/transcoder/(.*)/.*-nodejs/(.*)
-              dest: /owl-bot-staging/$1/$2    
+              dest: /owl-bot-staging/$1/$2
     """
     logging.basicConfig(level=logging.DEBUG)
-    staging = Path('owl-bot-staging')
+    staging = Path("owl-bot-staging")
     s_copy = transforms.move
     if staging.is_dir():
         # Load the default version defined in .repo-metadata.json.
-        default_version = json.load(open('.repo-metadata.json', 'rt'))['default_version']
+        default_version = json.load(open(".repo-metadata.json", "rt"))[
+            "default_version"
+        ]
         # Collect the subdirectories of the staging directory.
         versions = [v.name for v in staging.iterdir() if v.is_dir()]
         # Reorder the versions so the default version always comes last.
@@ -299,17 +301,16 @@ def owlbot_main():
         for version in versions:
             library = staging / version
             _tracked_paths.add(library)
-            s_copy(library, excludes=['README.md', 'package.json', 'src/index.ts'])
+            s_copy(library, excludes=["README.md", "package.json", "src/index.ts"])
         # The staging directory should never be merged into the main branch.
         shutil.rmtree(staging)
 
-
     common_templates = gcp.CommonTemplates()
-    templates = common_templates.node_library(source_location='build/src')
+    templates = common_templates.node_library(source_location="build/src")
     s_copy(templates, excludes=[])
 
     postprocess_gapic_library_hermetic()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     owlbot_main()
