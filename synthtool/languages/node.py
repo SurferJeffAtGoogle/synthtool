@@ -309,3 +309,7 @@ def owlbot_main():
     s_copy(templates, excludes=[])
 
     postprocess_gapic_library_hermetic()
+
+
+if __name__ == '__main__':
+    owlbot_main()
