@@ -203,12 +203,16 @@ class TestPostprocess(TestCase):
         assert any(["npx compileProtos src" in " ".join(call[0][0]) for call in calls])
 
 
-def test_owlbot_main():
+# postprocess_gapic_library_hermetic() must be mocked because it depends on node modules
+# present in the docker image but absent while running unit tests.
+@patch("synthtool.languages.node.postprocess_gapic_library_hermetic")
+def test_owlbot_main(fix_hermetic_mock):
     temp_dir = Path(tempfile.mkdtemp())
     shutil.copytree(FIXTURES / "nodejs-dlp", temp_dir / "nodejs-dlp")
     cwd = os.getcwd()
     try:
         os.chdir(temp_dir / "nodejs-dlp")
+        # just confirm it doesn't throw an exception.
         node.owlbot_main(Path(__file__).parent.parent / 'synthtool' / 'gcp' / 'templates')
     finally:
         os.chdir(cwd)
