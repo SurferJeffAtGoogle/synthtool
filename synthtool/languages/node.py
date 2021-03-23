@@ -21,7 +21,7 @@ from synthtool import _tracked_paths, gcp, shell, transforms
 from synthtool.gcp import samples, snippets
 from synthtool.log import logger
 from synthtool.sources import git
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 import logging
 import shutil
 
@@ -258,7 +258,7 @@ def postprocess_gapic_library_hermetic(hide_output=False):
     logger.debug("Post-processing completed")
 
 
-def owlbot_main():
+def owlbot_main(template_path: Optional[Path] = None):
     """Copies files from staging and template directories into current working dir.
 
     When there is no owlbot.py file, run this function instead.  Also, when an
@@ -306,7 +306,7 @@ def owlbot_main():
         src = Path("src")
         versions = [v.name for v in src.iterdir() if v.is_dir()]
 
-    common_templates = gcp.CommonTemplates()
+    common_templates = gcp.CommonTemplates(template_path)
     templates = common_templates.node_library(
         source_location="build/src", versions=versions, default_version=default_version
     )

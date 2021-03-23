@@ -20,6 +20,8 @@ from synthtool.languages import node
 import pathlib
 import filecmp
 import pytest
+import tempfile
+import shutil
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -199,3 +201,14 @@ class TestPostprocess(TestCase):
         assert any(["npm install" in " ".join(call[0][0]) for call in calls])
         assert any(["npm run fix" in " ".join(call[0][0]) for call in calls])
         assert any(["npx compileProtos src" in " ".join(call[0][0]) for call in calls])
+
+
+def test_owlbot_main():
+    temp_dir = Path(tempfile.mkdtemp())
+    shutil.copytree(FIXTURES / "nodejs-dlp", temp_dir / "nodejs-dlp")
+    cwd = os.getcwd()
+    try:
+        os.chdir(temp_dir / "nodejs-dlp")
+        node.owlbot_main(Path(__file__).parent.parent / 'synthtool' / 'gcp' / 'templates')
+    finally:
+        os.chdir(cwd)
