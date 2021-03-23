@@ -213,7 +213,9 @@ def test_owlbot_main(hermetic_mock):
     try:
         os.chdir(temp_dir / "nodejs-dlp")
         # just confirm it doesn't throw an exception.
-        node.owlbot_main(Path(__file__).parent.parent / 'synthtool' / 'gcp' / 'templates')
+        node.owlbot_main(
+            Path(__file__).parent.parent / "synthtool" / "gcp" / "templates"
+        )
     finally:
         os.chdir(cwd)
 
@@ -226,6 +228,8 @@ def test_owlbot_main_with_staging(hermetic_mock):
     try:
         os.chdir(temp_dir / "nodejs-dlp")
         # just confirm it doesn't throw an exception.
-        node.owlbot_main(Path(__file__).parent.parent / 'synthtool' / 'gcp' / 'templates')
+        node.owlbot_main(
+            Path(__file__).parent.parent / "synthtool" / "gcp" / "templates"
+        )
     finally:
         os.chdir(cwd)

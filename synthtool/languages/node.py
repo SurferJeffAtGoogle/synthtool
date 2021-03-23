@@ -283,9 +283,7 @@ def owlbot_main(template_path: Optional[Path] = None):
     """
     logging.basicConfig(level=logging.DEBUG)
     # Load the default version defined in .repo-metadata.json.
-    default_version = json.load(open(".repo-metadata.json", "rt"))[
-        "default_version"
-    ]
+    default_version = json.load(open(".repo-metadata.json", "rt"))["default_version"]
     staging = Path("owl-bot-staging")
     s_copy = transforms.move
     if staging.is_dir():
@@ -298,7 +296,7 @@ def owlbot_main(template_path: Optional[Path] = None):
         for version in versions:
             library = staging / version
             _tracked_paths.add(library)
-            s_copy(library, excludes=["README.md", "package.json", "src/index.ts"])
+            s_copy([library], excludes=["README.md", "package.json", "src/index.ts"])
         # The staging directory should never be merged into the main branch.
         shutil.rmtree(staging)
     else:
@@ -312,7 +310,7 @@ def owlbot_main(template_path: Optional[Path] = None):
     templates = common_templates.node_library(
         source_location="build/src", versions=versions, default_version=default_version
     )
-    s_copy(templates, excludes=[])
+    s_copy([templates], excludes=[])
 
     postprocess_gapic_library_hermetic()
 
