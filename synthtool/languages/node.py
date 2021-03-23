@@ -305,6 +305,8 @@ def owlbot_main(template_path: Optional[Path] = None):
         # Collect the subdirectories of the src directory.
         src = Path("src")
         versions = [v.name for v in src.iterdir() if v.is_dir()]
+        # Reorder the versions so the default version always comes last.
+        versions = [v for v in versions if v != default_version] + [default_version]
 
     common_templates = gcp.CommonTemplates(template_path)
     templates = common_templates.node_library(
