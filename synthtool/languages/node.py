@@ -282,13 +282,13 @@ def owlbot_main():
         "default_version": "v1",
     """
     logging.basicConfig(level=logging.DEBUG)
+    # Load the default version defined in .repo-metadata.json.
+    default_version = json.load(open(".repo-metadata.json", "rt"))[
+        "default_version"
+    ]
     staging = Path("owl-bot-staging")
     s_copy = transforms.move
     if staging.is_dir():
-        # Load the default version defined in .repo-metadata.json.
-        default_version = json.load(open(".repo-metadata.json", "rt"))[
-            "default_version"
-        ]
         # Collect the subdirectories of the staging directory.
         versions = [v.name for v in staging.iterdir() if v.is_dir()]
         # Reorder the versions so the default version always comes last.
@@ -301,6 +301,10 @@ def owlbot_main():
             s_copy(library, excludes=["README.md", "package.json", "src/index.ts"])
         # The staging directory should never be merged into the main branch.
         shutil.rmtree(staging)
+    else:
+        # Collect the subdirectories of the src directory.
+        src = Path("src")
+        versions = [v.name for v in src.iterdir() if v.is_dir()]
 
     common_templates = gcp.CommonTemplates()
     templates = common_templates.node_library(
