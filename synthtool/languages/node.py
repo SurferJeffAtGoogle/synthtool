@@ -261,11 +261,19 @@ def postprocess_gapic_library_hermetic(hide_output=False):
 _s_copy = transforms.move
 
 
+"""List of files te exclude from copy_and_delete_staging_dir() by default."""
+default_staging_excludes = ["README.md", "package.json", "src/index.ts"]
+
+
 def copy_and_delete_staging_dir(excludes: Optional[List[str]] = None) -> None:
-    """Copies the staging directory into the root.
+    f"""Copies the staging directory into the root.
+    
+    Args:
+        excludes: list of files to exclude while copying.  Defaults to
+          {default_staging_excludes}
     """
     if None == excludes:
-        excludes = ["README.md", "package.json", "src/index.ts"]
+        excludes = default_staging_excludes
     staging = Path("owl-bot-staging")
     versions = collect_version_sub_dirs(staging)
     if versions:
@@ -298,6 +306,7 @@ def collect_version_sub_dirs(parent_dir: Path) -> List[str]:
 
 
 def collect_versions_from_src() -> List[str]:
+    """Examines ./src to collect the list of versions."""
     return collect_version_sub_dirs(Path("src"))
 
 
@@ -306,6 +315,13 @@ def copy_common_templates(
     versions: Optional[List[str]] = None,
     excludes: Optional[List[str]] = None,
 ) -> None:
+    """Generates and copies common templates into the current working dir.
+
+    Args:
+        template_path: path to the template directory, optional
+        versions: list of API versions, optional
+        excludes: files to exclude during the copy, defaults to empty
+    """
     common_templates = gcp.CommonTemplates(template_path)
     default_version = versions[-1] if versions else None
     templates = common_templates.node_library(
