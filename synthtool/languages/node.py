@@ -109,7 +109,7 @@ def extract_clients(filePath: Path) -> List[str]:
     Args:
         filePath: the path of index.ts.
     Returns:
-        Array of client name string extract from index.ts file.
+        Array of client name str extract from index.ts file.
     """
     with open(filePath, "r") as fh:
         content = fh.read()
@@ -258,6 +258,48 @@ def postprocess_gapic_library_hermetic(hide_output=False):
     logger.debug("Post-processing completed")
 
 
+_s_copy = transforms.move
+
+
+def copy_and_delete_staging_dir() -> List[str]:
+    """Copies the staging directory into the root.
+
+    Returns: the list of versions, with the default version last.
+       the empty list of the staging directory did not exist.
+    """
+    staging = Path("owl-bot-staging")
+    versions = collect_version_sub_dirs(staging)
+    if versions:
+        # Copy each version directory into the root.
+        for version in versions:
+            library = staging / version
+            _tracked_paths.add(library)
+            _s_copy([library], excludes=["README.md", "package.json", "src/index.ts"])
+        # The staging directory should never be merged into the main branch.
+        shutil.rmtree(staging)
+
+    return versions
+
+
+def load_default_version() -> str:
+    """Loads the default_version declared in .repo-metadata.json."""
+    return json.load(open(".repo-metadata.json", "rt"))["default_version"]
+
+
+def collect_version_sub_dirs(parent_dir: Path) -> List[str]:
+    """Collects the subdirectories of parent_dir; the default version is the
+    final item in the returned list.
+    """
+    if not parent_dir.is_dir():
+        return []
+    default_version = load_default_version()
+    # Collect the subdirectories of the directory.
+    versions = [v.name for v in parent_dir.iterdir() if v.is_dir()]
+    # Reorder the versions so the default version always comes last.
+    versions = [v for v in versions if v != default_version] + [default_version]
+    return versions
+
+
 def owlbot_main(template_path: Optional[Path] = None):
     """Copies files from staging and template directories into current working dir.
 
@@ -282,35 +324,13 @@ def owlbot_main(template_path: Optional[Path] = None):
         "default_version": "v1",
     """
     logging.basicConfig(level=logging.DEBUG)
-    # Load the default version defined in .repo-metadata.json.
-    default_version = json.load(open(".repo-metadata.json", "rt"))["default_version"]
-    staging = Path("owl-bot-staging")
-    s_copy = transforms.move
-    if staging.is_dir():
-        # Collect the subdirectories of the staging directory.
-        versions = [v.name for v in staging.iterdir() if v.is_dir()]
-        # Reorder the versions so the default version always comes last.
-        versions = [v for v in versions if v != default_version] + [default_version]
-
-        # Copy each version directory into the root.
-        for version in versions:
-            library = staging / version
-            _tracked_paths.add(library)
-            s_copy([library], excludes=["README.md", "package.json", "src/index.ts"])
-        # The staging directory should never be merged into the main branch.
-        shutil.rmtree(staging)
-    else:
-        # Collect the subdirectories of the src directory.
-        src = Path("src")
-        versions = [v.name for v in src.iterdir() if v.is_dir()]
-        # Reorder the versions so the default version always comes last.
-        versions = [v for v in versions if v != default_version] + [default_version]
+    versions = copy_and_delete_staging_dir() or collect_version_sub_dirs(Path("src"))
 
     common_templates = gcp.CommonTemplates(template_path)
     templates = common_templates.node_library(
-        source_location="build/src", versions=versions, default_version=default_version
+        source_location="build/src", versions=versions, default_version=versions[-1]
     )
-    s_copy([templates], excludes=[])
+    _s_copy([templates], excludes=[])
 
     postprocess_gapic_library_hermetic()
 
