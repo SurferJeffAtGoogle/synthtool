@@ -231,5 +231,9 @@ def test_owlbot_main_with_staging(hermetic_mock):
         node.owlbot_main(
             Path(__file__).parent.parent / "synthtool" / "gcp" / "templates"
         )
+        # confirm that index.ts was not overwritten, because it's excluded.
+        golden_text = open(FIXTURES / "nodejs-dlp-with-staging" / "src" / "index.ts").read()
+        text = open(temp_dir / "nodejs-dlp" / "src" / "index.ts").read()
+        assert golden_text == text
     finally:
         os.chdir(cwd)
