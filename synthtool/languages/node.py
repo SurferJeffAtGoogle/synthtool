@@ -261,12 +261,11 @@ def postprocess_gapic_library_hermetic(hide_output=False):
 _s_copy = transforms.move
 
 
-def copy_and_delete_staging_dir() -> List[str]:
+def copy_and_delete_staging_dir(excludes: Optional[List[str]] = None) -> None:
     """Copies the staging directory into the root.
-
-    Returns: the list of versions, with the default version last.
-       the empty list of the staging directory did not exist.
     """
+    if None == excludes:
+        excludes = ["README.md", "package.json", "src/index.ts"]
     staging = Path("owl-bot-staging")
     versions = collect_version_sub_dirs(staging)
     if versions:
@@ -274,11 +273,9 @@ def copy_and_delete_staging_dir() -> List[str]:
         for version in versions:
             library = staging / version
             _tracked_paths.add(library)
-            _s_copy([library], excludes=["README.md", "package.json", "src/index.ts"])
+            _s_copy([library], excludes=excludes)
         # The staging directory should never be merged into the main branch.
         shutil.rmtree(staging)
-
-    return versions
 
 
 def load_default_version() -> str:
@@ -298,6 +295,23 @@ def collect_version_sub_dirs(parent_dir: Path) -> List[str]:
     # Reorder the versions so the default version always comes last.
     versions = [v for v in versions if v != default_version] + [default_version]
     return versions
+
+
+def collect_versions_from_src() -> List[str]:
+    return collect_version_sub_dirs(Path("src"))
+
+
+def copy_common_templates(
+    template_path: Optional[Path] = None,
+    versions: Optional[List[str]] = None,
+    excludes: Optional[List[str]] = None,
+) -> None:
+    common_templates = gcp.CommonTemplates(template_path)
+    default_version = versions[-1] if versions else None
+    templates = common_templates.node_library(
+        source_location="build/src", versions=versions, default_version=default_version
+    )
+    _s_copy([templates], excludes=(excludes or []))
 
 
 def owlbot_main(template_path: Optional[Path] = None):
@@ -324,13 +338,10 @@ def owlbot_main(template_path: Optional[Path] = None):
         "default_version": "v1",
     """
     logging.basicConfig(level=logging.DEBUG)
-    versions = copy_and_delete_staging_dir() or collect_version_sub_dirs(Path("src"))
+    copy_and_delete_staging_dir()
+    versions = collect_versions_from_src()
 
-    common_templates = gcp.CommonTemplates(template_path)
-    templates = common_templates.node_library(
-        source_location="build/src", versions=versions, default_version=versions[-1]
-    )
-    _s_copy([templates], excludes=[])
+    copy_common_templates(template_path, versions=versions)
 
     postprocess_gapic_library_hermetic()
 
